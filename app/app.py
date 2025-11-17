@@ -457,7 +457,6 @@ def main():
                 st.stop()
             
             try:
-                query = PUBMED_QUERY.pubmed_query
                 search_type = "reviews" if reviews_only else "all articles"
                 with st.spinner(f"Searching PubMed ({search_type})…"):
                     if reviews_only:
