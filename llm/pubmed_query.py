@@ -1,9 +1,8 @@
-# prompts.py — UPDATED to extract structural domains and regions
 from dataclasses import dataclass
 
 
 @dataclass
-class PubmedQueryGeneration:
+class PubMedQuery:
     # Locked sections (cannot be edited - critical for app functionality)
     _prompt_header: str = """Respond only in JSON. If you cannot construct a pubmed query, respond {}.
 All fields are required; if unknown, use null.
@@ -38,7 +37,7 @@ You are a biomedical text-mining specialist. Write a query to search Pubmed for 
 """
 
 
-    def generate_analyst_prompt(self, pubmed_query_instruction) -> str:
+    def generate_prompt_for_pubmed_query(self, pubmed_query_instruction) -> str:
         """Assemble the full prompt from locked and editable sections."""
         # If there's an override (set directly), use it for backward compatibility
 
@@ -58,9 +57,15 @@ You are a biomedical text-mining specialist. Write a query to search Pubmed for 
             self._prompt_footer
         )
 
-    def pubmed_query(self, value:str):
-        self._pubmed_query = value
+    _pubmed_query: str = ""
+    @property
+    def pubmed_query(self) -> str:
         return self._pubmed_query
 
-PUBMED_QUERY = PubmedQueryGeneration()
+    @pubmed_query.setter
+    def pubmed_query(self, value:str):
+        self._pubmed_query = value
+
+
+PUBMED_QUERY = PubMedQuery()
 
