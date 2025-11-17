@@ -1,7 +1,6 @@
 # Enhanced app.py - Add to your existing code
 from __future__ import annotations
 
-import copy
 import os, json, io, zipfile
 from datetime import date
 import calendar
