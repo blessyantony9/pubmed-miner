@@ -1,6 +1,7 @@
 # Enhanced app.py - Add to your existing code
 from __future__ import annotations
 
+import copy
 import os, json, io, zipfile
 from datetime import date
 import calendar
@@ -15,9 +16,11 @@ from services.pubmed import (
 )
 from pipeline.batch_analyze import fetch_all_fulltexts, analyze_texts
 from pipeline.csv_export import flatten_to_rows
+from pipeline.pubmed_query_generation import generate_pubmed_query
 
 # Import prompts for editing
 from llm.prompts import PROMPTS
+from llm.pubmed_query import PUBMED_QUERY
 
 
 def _persist(key, value):
@@ -369,8 +372,26 @@ def main():
             st.caption("💡 This is what the LLM receives. The editable section is embedded in the middle.")
 
     # ===== Search Section =====
-    st.subheader("1) Enter your PubMed query")
-    
+    st.subheader("1) Construct your PubMed query (reviews only)")
+
+    st.write(
+        "Describe which papers you want to fetch from PubMed. We'll use the description to construct a PubMed query.")
+    pubmed_query_instruction = st.text_area("PubMed Query Description", height=100,
+                                            placeholder='e.g., Fetch all papers about dengue containing terms about protein, mutation, and activation site.')
+
+    if st.button("Generate PubMed Query"):
+        pubmed_query = generate_pubmed_query(pubmed_query_instruction)
+        PUBMED_QUERY.pubmed_query = pubmed_query
+
+    # Editor for editing the generated pubmed query section
+    query = st.text_area(
+        "Editable PubMedQuery Section",
+        value=PUBMED_QUERY.pubmed_query,
+        height=100,
+        help="This section contains the PubMed query to fetch the desired publications. Edit the query here to customize extraction behavior."
+    )
+    PUBMED_QUERY.pubmed_query = query
+
     # Show NCBI API status in main area
     if not os.getenv("NCBI_API_KEY"):
         st.info("💡 **Tip:** Add your NCBI API key in the sidebar (👈) to increase rate limits from 3 to 10 requests/second.")
@@ -381,13 +402,6 @@ def main():
         value=True,
         help="If checked, only search for Review articles. If unchecked, search all article types."
     )
-    
-    if reviews_only:
-        st.write("Paste a PubMed query (will restrict to **Review** articles automatically).")
-    else:
-        st.write("Paste a PubMed query (will search **all article types**).")
-    
-    query = st.text_area("Query", height=100, placeholder='e.g., dengue[MeSH Terms] AND mutation[Text Word]')
 
     st.subheader("2) Choose publication date range & search")
     colA, colB, colC, colD = st.columns([1, 1, 1, 1])
@@ -413,6 +427,7 @@ def main():
     search_button_text = "🔎 Search PubMed (reviews)" if reviews_only else "🔎 Search PubMed (all articles)"
     go = st.button(search_button_text)
     if go:
+        query = PUBMED_QUERY.pubmed_query
         if not query.strip():
             st.warning("Please enter a query.")
         else:
@@ -442,6 +457,7 @@ def main():
                 st.stop()
             
             try:
+                query = PUBMED_QUERY.pubmed_query
                 search_type = "reviews" if reviews_only else "all articles"
                 with st.spinner(f"Searching PubMed ({search_type})…"):
                     if reviews_only:
